@@ -1,0 +1,14 @@
+#!/bin/zsh
+# Puts the plugin into every installed After Effects (it is AE-only, so it goes in each AE's own Plug-ins folder, as
+# Adobe recommends for After Effects-only effects). $3 is the target volume.
+SRC="$3/Library/Application Support/Real Motion Blur/RealMotionBlur.plugin"
+found=0
+for ae in "$3"/Applications/Adobe\ After\ Effects*/Plug-ins(N/); do
+  rm -rf "$ae/RealMotionBlur.plugin"
+  ditto "$SRC" "$ae/RealMotionBlur.plugin"
+  xattr -dr com.apple.quarantine "$ae/RealMotionBlur.plugin" 2>/dev/null
+  echo "Real Motion Blur installed into $ae"
+  found=1
+done
+[[ $found == 1 ]] || echo "Real Motion Blur: no After Effects found; the plugin is in $SRC (rerun the installer after installing AE)"
+exit 0

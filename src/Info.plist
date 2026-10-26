@@ -5,7 +5,7 @@
 	<key>CFBundleExecutable</key>
 	<string>RealMotionBlur</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.royplant.RealMotionBlur</string>
+	<string>com.plantt.RealMotionBlur</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

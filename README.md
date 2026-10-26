@@ -7,29 +7,67 @@ algorithm.
 Real Motion Blur is open source and not affiliated with or endorsed by Adobe. Adobe and After Effects are trademarks of
 Adobe Inc.
 
-## Build and install
+## Install
+
+1. Download `RealMotionBlur-<version>.pkg` from the
+   [Releases page](https://github.com/planttltd/real-motion-blur/releases).
+2. Quit After Effects, double-click the package and follow the installer. It puts the effect into every copy of
+   After Effects on the Mac. Run it again after installing a new After Effects version.
+3. Start After Effects: the effect is under **Effect > Blur & Sharpen > Real Motion Blur**.
+
+If macOS says the package "can't be opened" or "Apple could not verify" it, that release is not notarized. Open
+**System Settings > Privacy & Security**, scroll to the message about RealMotionBlur, click **Open Anyway** and run
+the installer again. A notarized release opens without this step.
+
+To uninstall, open `/Library/Application Support/Real Motion Blur` in Finder and double-click
+**Uninstall Real Motion Blur.command**.
+
+Needs a Mac with Apple silicon, macOS 14 or later and After Effects 2026 (26.5 was used for development).
+
+## Build from source
 
 ```bash
+./build.sh test       # build and run the core self-check (no After Effects or SDK needed)
 ./build.sh            # build build/RealMotionBlur.plugin
-./build.sh test       # build and run the core self-check (no After Effects needed)
 ./build.sh install    # build and copy into "/Applications/Adobe After Effects 2026/Plug-ins"
 ```
 
 Requirements:
-- A Mac with Apple silicon, macOS 14 or later, and Xcode with the Metal toolchain
-  (`xcodebuild -downloadComponent MetalToolchain`).
-- After Effects 2026 (26.5 was used for development).
+- Xcode with the Metal toolchain (`xcodebuild -downloadComponent MetalToolchain`).
 - The After Effects SDK, which Adobe does not allow redistributing, so it is not in this repository. Download it from
-  Adobe and set `AE_SDK` to its `Examples` folder (the plugin build needs it; `./build.sh test` does not):
+  Adobe and set `AE_SDK` to its `Examples` folder:
 
 ```bash
 AE_SDK=~/SDKs/AfterEffectsSDK/Examples ./build.sh install
 ```
 
-The plugin is ad-hoc signed. If macOS blocks it after copying it from somewhere else, clear the quarantine flag:
-`xattr -dr com.apple.quarantine RealMotionBlur.plugin`.
+Restart After Effects after installing: it only loads plugins at launch. A plugin built this way is ad-hoc signed,
+which After Effects accepts for plugins built on the same Mac.
 
-Restart After Effects after installing: it only loads plugins at launch.
+## Making the installer
+
+`installer/build_pkg.sh` builds `build/RealMotionBlur-<version>.pkg` (version from `src/Info.plist`):
+
+```bash
+AE_SDK=~/SDKs/AfterEffectsSDK/Examples installer/build_pkg.sh
+```
+
+The package installs the plugin into `/Library/Application Support/Real Motion Blur` and its post-install script
+copies it into every `/Applications/Adobe After Effects*/Plug-ins` folder. That is Adobe's recommended place for
+effects that only run in After Effects, unlike the shared MediaCore folder, which Premiere Pro also loads.
+
+For a release that opens with no Gatekeeper prompt, sign and notarize it. That needs an Apple Developer Program
+membership with a **Developer ID Application** and a **Developer ID Installer** certificate:
+
+```bash
+xcrun notarytool store-credentials rmb-notary      # once: Apple ID, team ID and an app-specific password
+AE_SDK=... SIGN_APP="Developer ID Application: <Team> (<ID>)" \
+  SIGN_PKG="Developer ID Installer: <Team> (<ID>)" NOTARY_PROFILE=rmb-notary installer/build_pkg.sh
+gh release create v1.0 build/RealMotionBlur-1.0.pkg --title "Real Motion Blur 1.0"
+```
+
+The script signs the plugin with the hardened runtime and a timestamp, signs the package, submits it to Apple's
+notary service, waits, staples the ticket and checks the result with `spctl`.
 
 ## Modes
 
@@ -108,6 +146,7 @@ sampling.
 - `src/RMBLayers.metal`: matte choke, layer split, warp, push-pull fill and compositing.
 - `test/core_test.mm`: self-check, run by `./build.sh test`.
 - `test/ae_e2e.jsx`: in-AE render test (both effects). Run it on an empty project; it reads back through `build/ae_e2e/e2e.aep`.
+- `installer/`: the macOS installer package (`build_pkg.sh`, post-install script, uninstaller, installer pages).
 - `assets/logo.svg` and `tools/svg_to_drawbot.py` generate `src/LogoPath.h`, which draws the Effect Controls header.
 
 ## Performance (M5 Max, per frame)
